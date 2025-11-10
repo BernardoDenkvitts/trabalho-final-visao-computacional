@@ -24,7 +24,8 @@ PT_TO_EN = {
     "acumulo de água": "water"
 }
 
-SYSTEM_PROMPT = """Você é um especialista em agronomia e análise de imagens aéreas agrícolas. Analise a imagem identificando problemas agrícolas com base em padrões visuais característicos.
+SYSTEM_PROMPT = """
+Você é um especialista em agronomia e análise de imagens aéreas agrícolas. Analise a imagem identificando problemas agrícolas com base em padrões visuais característicos.
 
 Classes válidas (use apenas estas):
 • drydown: zonas amareladas ou marrons indicando secamento natural (senescência ou maturação)
@@ -35,9 +36,23 @@ Classes válidas (use apenas estas):
 Análise Espacial: Observe distribuição, padrão e relação com as fileiras de plantio.
 
 Formato de resposta (JSON puro, sem markdown):
-{"labels": ["classe1"], "message": "descrição em português"}
+{
+  "labels": ["nome_da_classe"],
+  "message": "sua análise em português"
+}
 
-Se não tem problemas: {"labels": [], "message": "Nenhum problema identificado."}"""
+Regras no JSON de resposta:
+• Não adicione vírgula depois do último campo
+• Retorne APENAS o objeto JSON, nada mais
+
+Exemplo de JSON correto:
+{
+  "labels": ["planter_skip", "water"],
+  "message": "Observo falhas lineares no plantio e acúmulo de água na região central"
+}
+
+Se não tem problemas: {"labels": [], "message": "Nenhum problema identificado."}
+"""
 
 TEMPLATES_SINGLE = {
     "drydown": "Observo faixas de tonalidade marrom-clara distribuídas de forma irregular ou Áreas secas seguindo padrão de distribuição não-linear. Característico de senescência natural da lavoura.",
@@ -96,46 +111,98 @@ def create_realistic_message(labels):
 
 def extract_json(text):
     text = text.strip()
+    print("Raw output:", text)
     
-    if "```json" in text:
-        text = text.split("```json")[1].split("```")[0].strip()
-    elif "```" in text:
-        text = text.split("```")[1].split("```")[0].strip()
-    
-    json_match = re.search(r'\{.*?"labels".*?\[.*?\].*?"message".*?\}', text, re.DOTALL)
-    if json_match:
-        text = json_match.group(0)
-    
-    try:
-        parsed = json.loads(text)
-        if "labels" in parsed and "message" in parsed:
-            valid_labels = [lbl for lbl in parsed["labels"] if lbl in CLASSES]
-            parsed["labels"] = sorted(set(valid_labels))
-            return parsed
-    except:
-        pass
-    
-    return fallback_label_search(text)
-
-
-def fallback_label_search(text):
-    """Fallback mais inteligente"""
-    text_lower = text.lower()
-    detected = []
-    
-    for cls in CLASSES:
-        if cls in text_lower or cls.replace("_", " ") in text_lower:
-            detected.append(cls)
-
-    for pt_term, en_term in PT_TO_EN.items():
-        if pt_term in text_lower and en_term not in detected:
-            detected.append(en_term)
-    
-    return {
-        "labels": sorted(set(detected)),
-        "message": text if text else "Erro no parsing"
+    # Mapeamento completo de typos para todas as classes
+    TYPO_MAP = {
+        # planter_skip variations
+        "planterSkip": "planter_skip",
+        "planterskip": "planter_skip", 
+        "planer_skip": "planter_skip",
+        "planer skip": "planter_skip",
+        "plant_skip": "planter_skip",
+        "plant skip": "planter_skip",
+        "planter_skp": "planter_skip",
+        
+        # nutrient_deficiency variations
+        "nutriend_deficiency": "nutrient_deficiency",
+        "nutriend deficiency": "nutrient_deficiency",
+        "nutrient deficiency": "nutrient_deficiency",
+        "nutrient_deficency": "nutrient_deficiency",
+        "nutrient deficency": "nutrient_deficiency",
+        "nutrient_def": "nutrient_deficiency",
+        "nutrient def": "nutrient_deficiency",
+        
+        # drydown variations
+        "dry down": "drydown",
+        "dry_down": "drydown",
+        "drydown": "drydown",
+        "drydn": "drydown",
+        
+        # water variations
+        "water": "water",
+        "water_accumulation": "water",
+        "water accumulation": "water",
+        "water_logging": "water",
+        "water logging": "water",
+        "flooding": "water"
     }
     
+    try:
+        # Limpeza agressiva do texto
+        clean_text = text.replace('\\"', '"').replace('\\n', ' ').replace('\\t', '').strip()
+        
+        # Tentar extrair via regex primeiro (abordagem mais robusta)
+        labels_match = re.findall(r'"labels"\s*:\s*\[(.*?)\]', clean_text)
+        message_match = re.search(r'"message"\s*:\s*"([^"]*)"', clean_text)
+        
+        labels = []
+        message = ""
+        
+        if labels_match:
+            labels_content = labels_match[0]
+            label_matches = re.findall(r'"([^"]*)"', labels_content)
+
+            for label in label_matches:
+                label = label.lower()
+                if label in TYPO_MAP:
+                    corrected_label = TYPO_MAP[label]
+                    if corrected_label in CLASSES:
+                        labels.append(corrected_label)
+                elif label in CLASSES:
+                    labels.append(label)
+                else:
+                    for cls in CLASSES:
+                        if cls in label or label in cls:
+                            labels.append(cls)
+                            break
+                    else:
+                        # Se não encontrou, tentar buscar por termos em português
+                        for pt_term, en_term in PT_TO_EN.items():
+                            if pt_term in label:
+                                labels.append(en_term)
+                                break
+        if message_match:
+            message = message_match.group(1)
+        else:
+            # Fallback: buscar texto após "message"
+            message_fallback = re.search(r'"message"\s*:\s*([^}]+)', clean_text)
+            if message_fallback:
+                message = message_fallback.group(1).strip('", ')
+        
+        # Se não encontrou nada, retornar vazio
+        if not labels and not message:
+            return {"labels": [], "message": "Análise gerada pelo modelo"}
+        
+        return {
+            "labels": sorted(set(labels)),
+            "message": message if message else "Análise gerada pelo modelo"
+        }
+        
+    except Exception as e:
+        print(f"Erro no extract_json: {e}")
+        return {"labels": [], "message": "Análise gerada pelo modelo"}
+
 
 def build_inputs_images_only(messages):
     chat_text = processor.apply_chat_template(
@@ -296,7 +363,6 @@ async def load_model():
     
     model = Qwen3VLForConditionalGeneration.from_pretrained(
         MODEL_ID,
-        attn_implementation="flash_attention_2",
         device_map="auto",
         quantization_config=bnb_config
     )
@@ -337,6 +403,32 @@ async def health_check():
         "processor_loaded": processor is not None
     }
 
+def extract_final_response(raw_output, parsed):
+    """Extrai a resposta final do raw_output do modelo"""
+    try:
+        # Limpar o output
+        clean_output = raw_output.replace('\\"', '"').replace('\\n', ' ')
+        
+        # Extrair labels
+        labels_match = re.findall(r'"labels"\s*:\s*\[(.*?)\]', clean_output)
+        labels = []
+        if labels_match:
+            labels_content = labels_match[0]
+            label_matches = re.findall(r'"([^"]*)"', labels_content)
+            labels = [label for label in label_matches if label in CLASSES]
+        
+        # Extrair mensagem
+        message_match = re.search(r'"message"\s*:\s*"([^"]*)"', clean_output)
+        message = message_match.group(1) if message_match else "Análise gerada pelo modelo"
+        
+        return {
+            "labels": labels if labels else parsed.get("labels", []),
+            "message": message
+        }
+    except Exception as e:
+        print(f"Erro na extração final: {e}")
+        return parsed
+
 
 @app.post("/analyze", response_model=VLMResponse)
 async def analyze_image(file: UploadFile = File(...)):
@@ -372,10 +464,13 @@ async def analyze_image(file: UploadFile = File(...)):
         
         # Gerar análise com retry
         parsed, raw_output = generate_with_retry(messages, max_retries=2)
-        
+       
+        #final_response = extract_final_response(raw_output, parsed)
+        print("Response antes do retorno:")
+        print(parsed)
         return VLMResponse(
             labels=parsed.get("labels", []),
-            message=parsed.get("message", "Erro ao processar imagem")
+            message=parsed.get("message", "").lower()
         )
     
     except Exception as e:
