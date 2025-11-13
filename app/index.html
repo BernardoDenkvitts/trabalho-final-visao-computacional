@@ -235,16 +235,6 @@
             <input type="file" id="fileInput" accept="image/*">
         </div>
 
-        <div class="config-section">
-            <label for="endpointUrl">Endpoint da API:</label>
-            <input 
-                type="text" 
-                id="endpointUrl" 
-                placeholder="https://sua-api.com/analyze"
-                value="http://127.0.0.1:8000/analyze"
-            >
-        </div>
-
         <div class="preview-section" id="previewSection">
             <h3 class="preview-title">Imagem Selecionada:</h3>
             <img id="previewImage" class="preview-image" alt="Preview">
@@ -278,7 +268,7 @@
         const previewSection = document.getElementById('previewSection');
         const previewImage = document.getElementById('previewImage');
         const submitBtn = document.getElementById('submitBtn');
-        const endpointUrl = document.getElementById('endpointUrl');
+        const endpointUrl = "http://127.0.0.1:8000/analyze";
         const loading = document.getElementById('loading');
         const error = document.getElementById('error');
         const resultsSection = document.getElementById('resultsSection');
@@ -335,7 +325,7 @@
         submitBtn.addEventListener('click', async () => {
             if (!selectedFile) return;
 
-            const endpoint = endpointUrl.value.trim();
+            const endpoint = endpointUrl
             if (!endpoint) {
                 showError('Por favor, insira a URL do endpoint.');
                 return;

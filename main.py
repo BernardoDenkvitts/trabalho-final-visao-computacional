@@ -18,7 +18,7 @@ NUM_CLASSES = 5
 TARGET_SIZE = (512, 512)
 ALPHA = 0.5
 ENCODER_NAME = "efficientnet-b4"
-ANALYSIS_API_URL = "https://forbes-limousines-marathon-analytical.trycloudflare.com/analyze"
+ANALYSIS_API_URL = "https://multimedia-serum-suppliers-ended.trycloudflare.com/analyze"
 TIMEOUT_SECONDS = 30
 # --------------------------------
 
