@@ -112,3 +112,17 @@ http://0.0.0.0:8080
   "mensagem": "Área com anomalias identificada.",
   "imagem": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
 }
+```
+
+---
+
+# 📸 Resultado da Imagem
+
+<img width="407" height="408" alt="Screenshot from 2025-11-13 19-53-02" src="https://github.com/user-attachments/assets/99d7af4f-013a-44b7-b702-dcbcd502e91f" />
+<img width="399" height="408" alt="image" src="https://github.com/user-attachments/assets/71ff43d3-9a92-49e1-a5d8-5f95e8ef3989" />
+
+# 📸 Demonstração
+
+[Screencast from 2025-11-13 19-58-19.webm](https://github.com/user-attachments/assets/b0696b43-b703-45f7-845c-9fd2a5f6977b)
+
+
