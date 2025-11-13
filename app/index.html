@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analisador de Imagens</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 900px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 2em;
+        }
+
+        .upload-section {
+            margin-bottom: 30px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #e8ebff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .upload-text {
+            color: #666;
+            font-size: 16px;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .config-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9ff;
+            border-radius: 10px;
+        }
+
+        .config-section label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .config-section input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .config-section input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-bottom: 20px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .preview-section {
+            display: none;
+            margin-bottom: 30px;
+        }
+
+        .preview-section.active {
+            display: block;
+        }
+
+        .preview-title {
+            color: #333;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .preview-image {
+            width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .results-section {
+            display: none;
+        }
+
+        .results-section.active {
+            display: block;
+        }
+
+        .result-card {
+            background: #f8f9ff;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .result-label {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .result-message {
+            color: #555;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+
+        .processed-image-container {
+            margin-top: 20px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .error.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖼️ Analisador de Imagens</h1>
+
+        <div class="upload-section">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📤</div>
+                <div class="upload-text">
+                    <strong>Clique para selecionar</strong> ou arraste uma imagem aqui
+                </div>
+            </div>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+
+        <div class="config-section">
+            <label for="endpointUrl">Endpoint da API:</label>
+            <input 
+                type="text" 
+                id="endpointUrl" 
+                placeholder="https://sua-api.com/analyze"
+                value="http://127.0.0.1:8000/analyze"
+            >
+        </div>
+
+        <div class="preview-section" id="previewSection">
+            <h3 class="preview-title">Imagem Selecionada:</h3>
+            <img id="previewImage" class="preview-image" alt="Preview">
+        </div>
+
+        <button class="submit-btn" id="submitBtn" disabled>Enviar para Análise</button>
+
+        <div class="loading" id="loading" style="display: none;">Processando imagem</div>
+
+        <div class="error" id="error"></div>
+
+                <div class="results-section" id="resultsSection">
+            <h3 class="preview-title">Resultados da Análise:</h3>
+            
+            <div class="result-card">
+                <span class="result-label" id="resultLabel">Categoria</span>
+                <div class="result-message" id="resultMessage">Mensagem de análise aparecerá aqui</div>
+            </div>
+
+            <div class="processed-image-container">
+                <h3 class="preview-title">Imagem Processada:</h3>
+                <img id="processedImage" class="preview-image" alt="Imagem processada">
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const previewSection = document.getElementById('previewSection');
+        const previewImage = document.getElementById('previewImage');
+        const submitBtn = document.getElementById('submitBtn');
+        const endpointUrl = document.getElementById('endpointUrl');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const resultsSection = document.getElementById('resultsSection');
+        const resultLabel = document.getElementById('resultLabel');
+        const resultMessage = document.getElementById('resultMessage');
+        const processedImage = document.getElementById('processedImage');
+
+        let selectedFile = null;
+
+        // Click to upload
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        // File selection
+        fileInput.addEventListener('change', (e) => {
+            handleFile(e.target.files[0]);
+        });
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            handleFile(e.dataTransfer.files[0]);
+        });
+
+        function handleFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                showError('Por favor, selecione um arquivo de imagem válido.');
+                return;
+            }
+
+            selectedFile = file;
+            
+            // Preview image
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                previewSection.classList.add('active');
+                submitBtn.disabled = false;
+                resultsSection.classList.remove('active');
+                error.classList.remove('active');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        submitBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            const endpoint = endpointUrl.value.trim();
+            if (!endpoint) {
+                showError('Por favor, insira a URL do endpoint.');
+                return;
+            }
+
+            // Prepare form data
+            const formData = new FormData();
+            // NOTE: FastAPI endpoint expects UploadFile named "image"
+            formData.append('image', selectedFile, selectedFile.name);
+
+            // Show loading
+            loading.style.display = 'block';
+            submitBtn.disabled = true;
+            error.classList.remove('active');
+            resultsSection.classList.remove('active');
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    // try to read JSON error, otherwise text
+                    let txt;
+                    try {
+                        const j = await response.json();
+                        txt = j.detail || JSON.stringify(j);
+                    } catch (_) {
+                        txt = await response.text();
+                    }
+                    throw new Error(`Erro HTTP: ${response.status} - ${txt}`);
+                }
+
+                const data = await response.json();
+
+                // Display results
+                displayResults(data);
+
+            } catch (err) {
+                showError(`Erro ao processar imagem: ${err.message}`);
+            } finally {
+                loading.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        });
+
+        function displayResults(data) {
+            // label pode ser string, lista ou objeto — trate os casos
+            let labelVal = data.label ?? data.labels ?? data.category ?? null;
+            if (Array.isArray(labelVal)) {
+                labelVal = labelVal.join(', ');
+            } else if (typeof labelVal === 'object' && labelVal !== null) {
+                // se veio um objeto com probabilidades, converta para string legível
+                try {
+                    labelVal = Object.entries(labelVal)
+                        .sort((a,b) => (b[1] - a[1]))
+                        .map(([k,v]) => `${k}:${(v*100).toFixed(1)}%`)
+                        .slice(0,3)
+                        .join(' • ');
+                } catch {
+                    labelVal = JSON.stringify(labelVal);
+                }
+            }
+            resultLabel.textContent = labelVal || 'Sem categoria';
+
+            // mensagem pode estar em "mensagem" (pt) ou "message" (en)
+            const mensagemVal = data.mensagem ?? data.message ?? data.msg ?? data.description ?? null;
+            resultMessage.textContent = mensagemVal || 'Sem descrição disponível';
+
+            // imagem processada: pode vir em `imagem` (pt), `image` (en), ou `processed`
+            const imageData = data.imagem ?? data.image ?? data.processed_image ?? data.processed ?? null;
+
+            if (imageData) {
+                // Se parece com data URL (data:image/...), use direto
+                if (typeof imageData === 'string' && imageData.startsWith('data:image')) {
+                    processedImage.src = imageData;
+                } else if (typeof imageData === 'string' && (imageData.startsWith('/9j') || imageData.startsWith('iVBOR'))) {
+                    // base64 sem prefixo
+                    // assumir jpeg por padrão
+                    processedImage.src = `data:image/jpeg;base64,${imageData}`;
+                } else if (typeof imageData === 'string' && /^https?:\/\//i.test(imageData)) {
+                    // é uma URL pública
+                    processedImage.src = imageData;
+                } else {
+                    // última tentativa: se for objeto com chave base64
+                    try {
+                        if (typeof imageData === 'object' && imageData.data) {
+                            // possivelmente { data: "<base64>" } ou { data: [... bytes ...] }
+                            if (typeof imageData.data === 'string') {
+                                const b64 = imageData.data;
+                                processedImage.src = b64.startsWith('data:image') ? b64 : `data:image/png;base64,${b64}`;
+                            } else if (Array.isArray(imageData.data)) {
+                                // Array de bytes -> converter em blob
+                                const bytes = new Uint8Array(imageData.data);
+                                const blob = new Blob([bytes], { type: 'image/png' });
+                                processedImage.src = URL.createObjectURL(blob);
+                            } else {
+                                processedImage.src = previewImage.src; // fallback
+                            }
+                        } else {
+                            processedImage.src = previewImage.src; // fallback para original
+                        }
+                    } catch (e) {
+                        processedImage.src = previewImage.src;
+                    }
+                }
+            } else {
+                // se não veio imagem processada, mostrar a original
+                processedImage.src = previewImage.src;
+            }
+
+            resultsSection.classList.add('active');
+        }
+
+        function showError(message) {
+            error.textContent = message;
+            error.classList.add('active');
+        }
+    </script>
+</body>
+</html>
