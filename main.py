@@ -40,6 +40,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+traducao = {
+    "drydown": "Seca / Ressecamento",
+    "nutrient_deficiency": "Deficiência de nutrientes",
+    "water": "Água",
+    "planter_skip": "Falha no plantio"
+}
+
 # ------------------ modelo em cache ------------------
 @lru_cache(maxsize=1)
 def _load_model() -> Tuple[torch.nn.Module, torch.device]:
@@ -161,10 +168,10 @@ async def analyze_endpoint(image: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao codificar imagem: {e}")
 
-    # 6) devolver para o front-end
+    
     return JSONResponse(
         content={
-            "label": label,
+            "label": [traducao.get(l) for l in label],
             "mensagem": mensagem,
             "imagem": image_data_url,
             "raw_remote_response": remote_response_json,  # opcional: inclui resposta completa remota para debug
