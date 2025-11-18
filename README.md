@@ -41,6 +41,11 @@ Este projeto é composto por:
 * Proteção contra erros comuns (JSON inválido, timeout, FileNotFound)
 * Totalmente compatível com CORS para testes locais
 
+### **Inteligência Artificial**
+O projeto utiliza dois componentes principais de IA:
+
+- **Segmentação com EfficientNet-B4**: modelo responsável por gerar as máscaras e contornos das regiões relevantes na imagem.
+- **Vision-Language Model Qwen3-VL-32B-Instruct**: VLM responsável por analisar a imagem e produzir a mensagem/descrição em linguagem natural retornada ao usuário.
 
 # 🧩 Como rodar localmente
 
